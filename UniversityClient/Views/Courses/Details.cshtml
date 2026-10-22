@@ -1,0 +1,34 @@
+@model CourseDetailsViewModel
+@{
+    ViewData["Title"] = "Курс";
+}
+<p><a asp-action="Index" asp-route-version="@Model.Version">← Курстар тізімі</a></p>
+
+@if (Model.Error is not null || Model.Course is null)
+{
+    <div class="error"><strong>Қате:</strong> @(Model.Error ?? "Деректер жоқ.")</div>
+}
+else
+{
+    var c = Model.Course;
+    <div class="card">
+        <h1>@c.Name</h1>
+        <p class="muted">API нұсқасы: @Model.Version</p>
+        <p>@(string.IsNullOrWhiteSpace(c.Description) ? "Сипаттамасы жоқ" : c.Description)</p>
+        <ul>
+            <li>ID: @c.Id</li>
+            <li>Кредит: @c.Credits</li>
+            <li>Оқытушы: @c.TeacherDisplay</li>
+            @if (c.EnrolledStudentsCount.HasValue)
+            {
+                <li>Жазылған студенттер: @c.EnrolledStudentsCount</li>
+            }
+            <li>Құрылған күні (UTC): @c.CreatedAt.ToString("yyyy-MM-dd HH:mm")</li>
+        </ul>
+        <p>
+            Нұсқаны ауыстыру:
+            <a asp-action="Details" asp-route-id="@c.Id" asp-route-version="v1">v1</a> |
+            <a asp-action="Details" asp-route-id="@c.Id" asp-route-version="v2">v2</a>
+        </p>
+    </div>
+}

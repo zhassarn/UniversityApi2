@@ -1,0 +1,226 @@
+@host = http://localhost:5000
+
+### 1. Студенттер тізімі
+GET {{host}}/api/students
+
+### 2. Жаңа студент жасау (201)
+POST {{host}}/api/students
+Content-Type: application/json
+
+{ "firstName": "Alex", "lastName": "Johnson", "email": "alex.johnson@student.kz", "birthDate": "2004-05-10" }
+
+### 3. ID бойынша студент
+GET {{host}}/api/students/1
+
+### 4. Студентті өзгерту
+PUT {{host}}/api/students/1
+Content-Type: application/json
+
+{ "firstName": "Zhassar", "lastName": "Updated", "email": "zhassar@student.kz", "birthDate": "2004-03-15" }
+
+### 5. Оқытушы жасау
+POST {{host}}/api/teachers
+Content-Type: application/json
+
+{ "firstName": "Sara", "lastName": "Omarova", "email": "sara.omarova@uni.kz", "department": "Computer Science" }
+
+### 6. Курс жасау + оқытушыны байлау
+POST {{host}}/api/courses
+Content-Type: application/json
+
+{ "name": "Cloud Computing", "description": "AWS basics", "credits": 4, "teacherId": 1 }
+
+### 7. Студентті курсқа жазу (201)
+POST {{host}}/api/enrollments
+Content-Type: application/json
+
+{ "studentId": 3, "courseId": 1 }
+
+### 8. Қайта жазу (409 ALREADY_ENROLLED)
+POST {{host}}/api/enrollments
+Content-Type: application/json
+
+{ "studentId": 3, "courseId": 1 }
+
+### 9. Студент + курстары
+GET {{host}}/api/students/1/courses
+
+### 10. Курстарды сүзу
+GET {{host}}/api/courses?name=data&minCredits=3&maxCredits=5
+
+### 11. Бағаны өзгерту
+PUT {{host}}/api/enrollments/2/grade
+Content-Type: application/json
+
+{ "grade": 88.5 }
+
+### 11b. Курстан шығару
+DELETE {{host}}/api/enrollments/4
+
+### 12. Жоқ нысан (404 STUDENT_NOT_FOUND)
+GET {{host}}/api/students/9999
+
+### 13. Валидация қатесі (400)
+POST {{host}}/api/students
+Content-Type: application/json
+
+{ "firstName": "", "lastName": "X", "email": "not-an-email" }
+
+### Бизнес-ереже: жоқ оқытушы (404 TEACHER_NOT_FOUND)
+POST {{host}}/api/courses
+Content-Type: application/json
+
+{ "name": "Ghost course", "credits": 3, "teacherId": 9999 }
+
+### Бизнес-ереже: жоқ курсқа жазу (404 COURSE_NOT_FOUND)
+POST {{host}}/api/enrollments
+Content-Type: application/json
+
+{ "studentId": 1, "courseId": 9999 }
+
+
+################################################################
+# ЧАСТЬ 2 — безопасность (VS Code REST Client). Пароль = Seed:Password
+################################################################
+
+### Сценарий 1: аноним — список курсов (200)
+GET {{host}}/api/v1/courses
+
+### Сценарий 2: аноним создаёт курс (401)
+POST {{host}}/api/v1/courses
+Content-Type: application/json
+
+{ "name": "Anon course", "credits": 3, "teacherId": 1 }
+
+### Сценарий 3: неверный пароль (401, токена нет)
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{ "userName": "student2", "password": "WrongPassword1" }
+
+### Сценарий 4: вход (200 + JWT)
+# @name loginTeacher1
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{ "userName": "teacher1", "password": "Passw0rd123" }
+
+###
+@teacher1Token = {{loginTeacher1.response.body.$.result.accessToken}}
+
+### Текущий пользователь
+GET {{host}}/api/auth/me
+Authorization: Bearer {{teacher1Token}}
+
+### Токены других пользователей
+# @name loginTeacher2
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{ "userName": "teacher2", "password": "Passw0rd123" }
+
+###
+# @name loginStudent1
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{ "userName": "student1", "password": "Passw0rd123" }
+
+###
+# @name loginStudent2
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{ "userName": "student2", "password": "Passw0rd123" }
+
+###
+# @name loginAdmin
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{ "userName": "admin", "password": "Passw0rd123" }
+
+###
+@teacher2Token = {{loginTeacher2.response.body.$.result.accessToken}}
+@student1Token = {{loginStudent1.response.body.$.result.accessToken}}
+@student2Token = {{loginStudent2.response.body.$.result.accessToken}}
+@adminToken = {{loginAdmin.response.body.$.result.accessToken}}
+
+### Сценарий 5: просроченный/испорченный токен (401 INVALID_TOKEN / TOKEN_EXPIRED)
+GET {{host}}/api/auth/me
+Authorization: Bearer {{teacher1Token}}broken
+
+### Сценарий 6: Student удаляет курс (403)
+DELETE {{host}}/api/v1/courses/1
+Authorization: Bearer {{student1Token}}
+
+### Сценарий 7: Teacher меняет оценку на своём курсе (200) — запись 1 = курс 1 (teacher1)
+PUT {{host}}/api/v1/enrollments/1/grade
+Authorization: Bearer {{teacher1Token}}
+Content-Type: application/json
+
+{ "grade": 97 }
+
+### Сценарий 8: Teacher меняет оценку на чужом курсе (403)
+PUT {{host}}/api/v1/enrollments/1/grade
+Authorization: Bearer {{teacher2Token}}
+Content-Type: application/json
+
+{ "grade": 50 }
+
+### Сценарий 9a: Student смотрит чужие курсы/оценки (403)
+GET {{host}}/api/v1/students/1/courses
+Authorization: Bearer {{student2Token}}
+
+### Сценарий 9b: Student смотрит чужую запись (403)
+GET {{host}}/api/v1/enrollments/1
+Authorization: Bearer {{student2Token}}
+
+### Свои оценки (200): Student видит только свои записи
+GET {{host}}/api/v1/enrollments
+Authorization: Bearer {{student1Token}}
+
+### Сценарий 10: Admin — список пользователей (скопируйте Id student2)
+GET {{host}}/api/users
+Authorization: Bearer {{adminToken}}
+
+### Сценарий 10: Admin назначает роль (подставьте Id пользователя)
+PUT {{host}}/api/users/PUT-USER-ID-HERE/role
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{ "role": "Teacher" }
+
+### Сценарий 11: Student назначает себе Admin (403)
+PUT {{host}}/api/users/ANY-ID/role
+Authorization: Bearer {{student1Token}}
+Content-Type: application/json
+
+{ "role": "Admin" }
+
+### Сценарий 12: v1 и v2
+GET {{host}}/api/v1/courses
+
+###
+GET {{host}}/api/v2/courses
+
+###
+GET {{host}}/api/v2/courses/1
+
+### Регистрация (роль всегда Student)
+POST {{host}}/api/auth/register
+Content-Type: application/json
+
+{ "userName": "newuser", "email": "newuser@mail.kz", "password": "Passw0rd123" }
+
+### Регистрация: слабый пароль (400)
+POST {{host}}/api/auth/register
+Content-Type: application/json
+
+{ "userName": "weak", "email": "weak@mail.kz", "password": "123" }
+
+### Регистрация: занятое имя (409)
+POST {{host}}/api/auth/register
+Content-Type: application/json
+
+{ "userName": "admin", "email": "other@mail.kz", "password": "Passw0rd123" }

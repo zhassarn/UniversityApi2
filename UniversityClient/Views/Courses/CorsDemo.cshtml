@@ -1,0 +1,37 @@
+@model CorsDemoViewModel
+@{
+    ViewData["Title"] = "CORS демо";
+}
+<h1>CORS демонстрациясы</h1>
+<p>
+    Бұл бет <code>@Context.Request.Scheme://@Context.Request.Host</code> origin-нен ашылған.
+    Төмендегі батырма браузер ішінен (JavaScript <code>fetch</code>) API-ға
+    (<code>@Model.ApiBaseUrl</code>) сұраныс жібереді. API-дың CORS саясатында бұл origin рұқсат етілсе — жауап келеді,
+    әйтпесе браузер сұранысты бұғаттайды.
+</p>
+<p class="muted">
+    Ескерту: MVC клиенттің ішіндегі серверлік HTTP-сұраныстарына (IHttpClientFactory) CORS әсер етпейді —
+    CORS тек браузерде орындалатын JavaScript үшін.
+</p>
+<button id="run">GET @Model.ApiBaseUrl/api/v1/courses</button>
+<div id="status" style="margin-top:12px"></div>
+<pre id="out" style="display:none"></pre>
+
+<script>
+    document.getElementById('run').addEventListener('click', async () => {
+        const status = document.getElementById('status');
+        const out = document.getElementById('out');
+        out.style.display = 'none';
+        try {
+            const r = await fetch('@Model.ApiBaseUrl/api/v1/courses', { headers: { 'Accept': 'application/json' } });
+            const data = await r.json();
+            status.className = 'ok';
+            status.textContent = 'Сәтті: HTTP ' + r.status + ' (CORS рұқсат етілген)';
+            out.textContent = JSON.stringify(data, null, 2).slice(0, 1200);
+            out.style.display = 'block';
+        } catch (e) {
+            status.className = 'error';
+            status.textContent = 'Браузер сұранысты бұғаттады (CORS) немесе API қолжетімсіз: ' + e;
+        }
+    });
+</script>

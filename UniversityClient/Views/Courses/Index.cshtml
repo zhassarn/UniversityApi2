@@ -1,0 +1,48 @@
+@model CoursesIndexViewModel
+@{
+    ViewData["Title"] = "Курстар";
+}
+<h1>Университет курстары</h1>
+<p>
+    API нұсқасы:
+    <a asp-action="Index" asp-route-version="v1">v1</a> |
+    <a asp-action="Index" asp-route-version="v2">v2</a>
+    — қазір: <strong>@Model.Version</strong>
+</p>
+
+@if (Model.Error is not null)
+{
+    <div class="error"><strong>Қате:</strong> @Model.Error</div>
+}
+else if (Model.Courses.Count == 0)
+{
+    <p class="muted">Курстар жоқ.</p>
+}
+else
+{
+    <table>
+        <thead>
+        <tr>
+            <th>ID</th>
+            <th>Атауы</th>
+            <th>Кредит</th>
+            <th>Оқытушы</th>
+            @if (Model.Version == "v2") { <th>Студент саны</th> }
+            <th></th>
+        </tr>
+        </thead>
+        <tbody>
+        @foreach (var c in Model.Courses)
+        {
+            <tr>
+                <td>@c.Id</td>
+                <td>@c.Name</td>
+                <td>@c.Credits</td>
+                <td>@c.TeacherDisplay</td>
+                @if (Model.Version == "v2") { <td>@(c.EnrolledStudentsCount?.ToString() ?? "—")</td> }
+                <td><a asp-action="Details" asp-route-id="@c.Id" asp-route-version="@Model.Version">Толығырақ</a></td>
+            </tr>
+        }
+        </tbody>
+    </table>
+}
